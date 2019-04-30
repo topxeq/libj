@@ -1,32 +1,172 @@
 package org.topget.TXGT;
 
-import org.json.JSONObject;
-import java.net.URL;
-import java.net.HttpURLConnection;
-import java.util.Map;
-import java.util.Random;
-import java.util.HashMap;
-import java.util.List;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.FileInputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.net.URLEncoder;
-import java.nio.Buffer;
+import java.security.MessageDigest;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Formatter;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
-import java.security.MessageDigest;
+import java.util.Map;
+import java.util.Random;
+import org.json.JSONObject;
 
 public class TXGT {
+
+    public static int modX(int numA, int modA) {
+        int numT = numA;
+
+        if (numT == 0) {
+            return 0;
+        }
+
+        if (numT > 0) {
+            return (numT % modA);
+        }
+
+        for (; numT < 0;) {
+            numT += modA;
+        }
+
+        return numT;
+    }
+
+    public static int ensurePositive(int numA, int modA) {
+        int numT = numA;
+        for (; numT < 0;) {
+            numT += modA;
+        }
+
+        return numT;
+    }
+
+    public static class UByte {
+        public int valueM;
+
+        public UByte() {
+            valueM = 0;
+        }
+
+        public UByte(int c) {
+            valueM = modX(c, 256);
+        }
+
+        public UByte(byte b) {
+            valueM = b & 0xFF;
+        }
+
+        public String toString() {
+            return String.format("%d", valueM);
+        }
+
+        public UByte addAndNew(UByte ub) {
+            return new UByte(valueM + ub.valueM);
+        }
+
+        public UByte minusAndNew(UByte ub) {
+            return new UByte(valueM - ub.valueM);
+        }
+
+        public void add(UByte ub) {
+            valueM = modX(valueM + ub.valueM, 256);
+        }
+
+        public void add(int c) {
+            valueM = modX(valueM + c, 256);
+        }
+
+        public void add(byte b) {
+            valueM = modX(valueM + (b & 0xFF), 256);
+        }
+
+        public void minus(UByte ub) {
+            valueM = modX(valueM - ub.valueM, 256);
+        }
+
+        public void minus(int c) {
+            valueM = modX(valueM - c, 256);
+        }
+
+        public void minus(byte b) {
+            valueM = modX(valueM - (b & 0xFF), 256);
+        }
+
+    }
+
+    public static byte byteAddU(byte a, byte b) {
+        int aT = a & 0xFF;
+        int bT = b & 0xFF;
+
+        return (byte) (modX(aT + bT, 256));
+    }
+
+    public static byte byteAddU(int a, int b) {
+        return (byte) (modX(a + b, 256));
+    }
+
+    public static byte byteAddUV(byte... bs) {
+        int tmpc = 0;
+
+        for (byte b : bs) {
+            tmpc += (b & 0xFF);
+        }
+
+        return (byte) (modX(tmpc, 256));
+    }
+
+    public static byte byteAddUV(int... cs) {
+        int tmpc = 0;
+
+        for (int c : cs) {
+            tmpc += c;
+        }
+
+        return (byte) (modX(tmpc, 256));
+    }
+
+    public static byte byteMinusU(byte a, byte b) {
+        int aT = a & 0xFF;
+        int bT = b & 0xFF;
+
+        return (byte) (modX(aT - bT, 256));
+    }
+
+    public static byte byteMinusU(int a, int b) {
+        return (byte) (modX(a - b, 256));
+    }
+
+    public static byte byteMinusUV(byte... bs) {
+        int tmpc = 0;
+
+        for (byte b : bs) {
+            tmpc -= (b & 0xFF);
+        }
+
+        return (byte) (modX(tmpc, 256));
+    }
+
+    public static byte byteMinusUV(int... cs) {
+        int tmpc = 0;
+
+        for (int c : cs) {
+            tmpc -= c;
+        }
+
+        return (byte) (modX(tmpc, 256));
+    }
 
     public static DecimalFormat decimalFormat = new DecimalFormat("###.00");
 
@@ -147,12 +287,25 @@ public class TXGT {
     }
 
     public static String getBufStringHex(byte[] bufA) {
+        return getBufStringHex(bufA, "");
+    }
+
+    public static String getBufStringHex(byte[] bufA, String sepA) {
         if (bufA == null) {
             return "";
         }
+        String sepT = sepA;
+        if (sepT == null) {
+            sepT = "";
+        }
+
         StringBuilder sb = new StringBuilder(bufA.length + 1);
         for (int i = 0; i < bufA.length; i++) {
-            sb.append(Integer.toHexString(bufA[i] & 0xFF).toUpperCase() + " ");
+            if (i != 0) {
+                sb.append(sepT);
+            }
+
+            sb.append(Integer.toHexString(bufA[i] & 0xFF).toUpperCase());
         }
 
         return sb.toString();
@@ -253,8 +406,17 @@ public class TXGT {
         return strA.replaceAll(patternA, replaceA);
     }
 
+    public static byte[] getUTF8Bytes(String strA) {
+        try {
+            return strA.getBytes("UTF-8");
+        } catch (Exception e) {
+            return strA.getBytes();
+        }
+    }
+
     public static String md5Encrypt(String dataStr) {
         try {
+
             MessageDigest m = MessageDigest.getInstance("MD5");
 
             m.update(dataStr.getBytes("UTF8"));
@@ -272,6 +434,108 @@ public class TXGT {
         }
 
         return "";
+    }
+
+    public static boolean isHex(byte c) {
+        if (('0' <= c) && (c <= '9')) {
+            return true;
+        }
+
+        if (('a' <= c) && (c <= 'f')) {
+            return true;
+        }
+
+        if (('A' <= c) && (c <= 'F')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public static byte unhex(byte c) {
+        if (('0' <= c) && (c <= '9')) {
+            return (byte) (c - '0');
+        }
+
+        if (('a' <= c) && (c <= 'f')) {
+            return (byte) (c - 'a' + 10);
+        }
+
+        if (('A' <= c) && (c <= 'F')) {
+            return (byte) (c - 'A' + 10);
+        }
+
+        return 0;
+    }
+
+    public static String ulencode(String strA) {
+        if (strA == null) {
+            return null;
+        }
+
+        byte[] bufT = getUTF8Bytes(strA);
+
+        int lenT = bufT.length;
+
+        StringBuilder sbuf = new StringBuilder(lenT);
+
+        String tableStrT = "0123456789ABCDEF";
+
+        byte v;
+
+        for (int i = 0; i < lenT; i++) {
+            v = bufT[i];
+
+            if (!(((v >= '0') && (v <= '9')) || ((v >= 'a') && (v <= 'z')) || ((v >= 'A') && (v <= 'Z')))) {
+                sbuf.append('_');
+                sbuf.append(tableStrT.charAt((v & 0xFF) >> 4));
+                sbuf.append(tableStrT.charAt((v & 0xFF) & 15));
+            } else {
+                sbuf.append((char) (v));
+            }
+        }
+
+        return sbuf.toString();
+
+    }
+
+    public static String ByteArrayOutputStreamToUTF8String(ByteArrayOutputStream streamA) {
+        try {
+            return streamA.toString("utf-8");
+        } catch (Exception e) {
+            return streamA.toString();
+        }
+    }
+
+    public static String uldecode(String strA) {
+
+        byte[] strBufT = getUTF8Bytes(strA);
+
+        int lenT = strBufT.length;
+
+        ByteArrayOutputStream bufT = new ByteArrayOutputStream(lenT);
+
+        int c;
+
+        for (int i = 0; i < lenT;) {
+            if (strBufT[i] == '_') {
+                if (i + 2 >= lenT) {
+                    return strA;
+                }
+
+                c = ((unhex(strBufT[i + 1]) & 0xFF) << 4) | (unhex(strBufT[i + 2]) & 0xFF);
+
+                bufT.write(c);
+
+                i += 3;
+            } else {
+                bufT.write((strBufT[i]));
+                i++;
+            }
+        }
+
+        return ByteArrayOutputStreamToUTF8String(bufT);
+
     }
 
     public static String getCurrentDateTime(String formatA) {
