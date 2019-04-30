@@ -33,6 +33,33 @@ public class Test {
         String st = TXGT.ulencode("abcABZ%&*&我们大家都很好。");
         TXGT.Pl("%s", st);
         TXGT.Pl("%s", TXGT.uldecode(st));
+
+        st = TXGT.EncodeStringSimple("abcABZ%&*&我们大家都很好。");
+        TXGT.Pl("%s", st);
+        TXGT.Pl("%s", TXGT.DecodeStringSimple(st));
+
+        st = TXGT.EncryptStringByTXTE("abcABZ%&*&我们大家都很好。", null);
+        TXGT.Pl("(%d)%s", st.length(), st);
+        TXGT.Pl("Detxte: %s", TXGT.DecryptStringByTXTE(st, null));
+
+        byte[] sBufT = TXGT.getUTF8Bytes("abcABZ%&*&我们大家都很好。");
+
+        TXGT.Pl("test buf(%s): %s", sBufT.length, TXGT.getBufStringDec(sBufT, ","));
+
+        TXGT.Pl("h: %s", TXGT.byteToHex(10));
+        TXGT.Pl("h: %s", TXGT.byteToHex(-10));
+        TXGT.Pl("h: %s", TXGT.byteToHex(246));
+
+        byte b1 = -10;
+        int c1 = -10;
+        int c2 = 246;
+        int c3 = b1;
+
+        TXGT.Pl("%02X", b1);
+        TXGT.Pl("%02X", c1);
+        TXGT.Pl("%02X", c2);
+        TXGT.Pl("%02X", c3);
+
     }
 
 }

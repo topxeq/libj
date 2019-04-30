@@ -222,8 +222,31 @@ public class TXGT {
 
     }
 
+    public static byte[] hexToByteArray(String strA) {
+        if (strA == null) {
+            return null;
+        }
+
+        String strT = strA.trim();
+
+        int dataLen = strT.length() / 2;
+
+        byte[] buffer = new byte[dataLen];
+
+        for (int i = 0; i < dataLen; i++) {
+            buffer[i] = TXGT.hex2Byte(strT.substring(i * 2, i * 2 + 2));
+        }
+
+        return buffer;
+
+    }
+
     public static byte hex2Byte(String hexStrA) {
-        return (byte) (Integer.decode("0x" + hexStrA).intValue());
+        try {
+            return (byte) (Integer.decode("0x" + hexStrA).intValue());
+        } catch (Exception e) {
+            return (byte) 0;
+        }
     }
 
     public static String bytes2Hex(byte[] b, int lenA) {
@@ -234,12 +257,12 @@ public class TXGT {
         }
 
         for (int n = 0; n < lenA; n++) {
-            stmp = Integer.toHexString(b[n] & 0xFF);
-            sb.append((stmp.length() == 1) ? "0" + stmp : stmp);
+            stmp = byteToHex(b[n]);
+            sb.append(stmp);
             sb.append(" ");
         }
 
-        return sb.toString().toUpperCase().trim();
+        return sb.toString().trim();
     }
 
     public static byte[] copyBufferSection(byte[] bufA, int idxA, int lengthA) {
@@ -249,8 +272,22 @@ public class TXGT {
         return rt;
     }
 
+    public static String intToStr(int c) {
+        return String.format("%d", c);
+    }
+
+    public static String intToHex(int c, int ensureCharsA) {
+        return String.format("%0" + intToStr(ensureCharsA) + "X", c);
+    }
+
     public static String intToHex(int c) {
-        return Integer.toHexString(c).toUpperCase();
+        String rs = String.format("%X", c);
+
+        if ((rs.length() % 2) != 0) {
+            rs = "0" + rs;
+        }
+
+        return rs;
     }
 
     public static String shortToHexEnsureDigits(int c) {
@@ -268,6 +305,16 @@ public class TXGT {
         }
     }
 
+    public static String byteToHex(byte b) {
+        return String.format("%02X", b & 0xFF);
+    }
+
+    public static String byteToHex(int c) {
+        byte b = (byte) modX(c, 256);
+
+        return String.format("%02X", b);
+    }
+
     public static String getBufString(byte[] bufA, int bytesA) {
         StringBuilder sb = new StringBuilder(bytesA + 1);
         for (int i = 0; i < bytesA; i++) {
@@ -277,10 +324,30 @@ public class TXGT {
         return sb.toString();
     }
 
+    public static String getBufStringDec(byte[] bufA, String sepA) {
+        if (bufA == null) {
+            return null;
+        }
+
+        int bytesT = bufA.length;
+
+        StringBuilder sb = new StringBuilder(bytesT + 1);
+
+        for (int i = 0; i < bytesT; i++) {
+            if (i != 0) {
+                sb.append(sepA);
+            }
+
+            sb.append(String.format("%d", bufA[i] & 0xFF));
+        }
+
+        return sb.toString();
+    }
+
     public static String getBufStringHex(byte[] bufA, int bytesA) {
         StringBuilder sb = new StringBuilder(bytesA + 1);
         for (int i = 0; i < bytesA; i++) {
-            sb.append(Integer.toHexString(bufA[i] & 0xFF).toUpperCase() + " ");
+            sb.append(byteToHex(bufA[i]) + " ");
         }
 
         return sb.toString();
@@ -290,10 +357,15 @@ public class TXGT {
         return getBufStringHex(bufA, "");
     }
 
+    public static String byteArrayToHex(byte[] bufA) {
+        return getBufStringHex(bufA, "");
+    }
+
     public static String getBufStringHex(byte[] bufA, String sepA) {
         if (bufA == null) {
             return "";
         }
+
         String sepT = sepA;
         if (sepT == null) {
             sepT = "";
@@ -305,7 +377,7 @@ public class TXGT {
                 sb.append(sepT);
             }
 
-            sb.append(Integer.toHexString(bufA[i] & 0xFF).toUpperCase());
+            sb.append(byteToHex(bufA[i]));
         }
 
         return sb.toString();
@@ -314,7 +386,7 @@ public class TXGT {
     public static String getBufStringHexWithIndex(byte[] bufA, int bytesA) {
         StringBuilder sb = new StringBuilder(bytesA + 1);
         for (int i = 0; i < bytesA; i++) {
-            sb.append("" + i + ":" + Integer.toHexString(bufA[i] & 0xFF).toUpperCase() + " ");
+            sb.append("" + i + ":" + byteToHex(bufA[i]) + " ");
         }
 
         return sb.toString();
@@ -332,7 +404,7 @@ public class TXGT {
     public static String getIntBufStringHexWithIndex(int[] bufA, int countA) {
         StringBuilder sb = new StringBuilder(countA + 1);
         for (int i = 0; i < countA; i++) {
-            sb.append("" + i + ":" + Integer.toHexString(bufA[i]).toUpperCase() + " ");
+            sb.append("" + i + ":" + byteToHex(bufA[i]) + " ");
         }
 
         return sb.toString();
@@ -535,6 +607,130 @@ public class TXGT {
         }
 
         return ByteArrayOutputStreamToUTF8String(bufT);
+
+    }
+
+    public static String EncodeStringSimple(String strA) {
+        if (strA == null) {
+            return null;
+        }
+
+        byte[] bufT = getUTF8Bytes(strA);
+
+        int lenT = bufT.length;
+
+        StringBuilder sbuf = new StringBuilder(lenT);
+
+        String tableStrT = "0123456789ABCDEF";
+
+        byte v;
+
+        for (int i = 0; i < lenT; i++) {
+            v = bufT[i];
+
+            if (!(((v >= '0') && (v <= '9')) || ((v >= 'a') && (v <= 'z')))) {
+                sbuf.append('%');
+                sbuf.append(tableStrT.charAt((v & 0xFF) >> 4));
+                sbuf.append(tableStrT.charAt((v & 0xFF) & 15));
+            } else {
+                sbuf.append((char) (v));
+            }
+        }
+
+        return sbuf.toString();
+    }
+
+    public static String DecodeStringSimple(String strA) {
+
+        byte[] strBufT = getUTF8Bytes(strA);
+
+        int lenT = strBufT.length;
+
+        ByteArrayOutputStream bufT = new ByteArrayOutputStream(lenT);
+
+        int c;
+
+        for (int i = 0; i < lenT;) {
+            if (strBufT[i] == '%') {
+                if (i + 2 >= lenT) {
+                    return strA;
+                }
+
+                c = ((unhex(strBufT[i + 1]) & 0xFF) << 4) | (unhex(strBufT[i + 2]) & 0xFF);
+
+                bufT.write(c);
+
+                i += 3;
+            } else {
+                bufT.write((strBufT[i]));
+                i++;
+            }
+        }
+
+        return ByteArrayOutputStreamToUTF8String(bufT);
+
+    }
+
+    public static String EncryptStringByTXTE(String strA, String codeA) {
+        if (strA == null) {
+            return null;
+        }
+
+        byte[] bufT = getUTF8Bytes(strA);
+
+        // Pl(getBufStringDec(bufT, ","));
+
+        int lenT = bufT.length;
+
+        String codeT = codeA;
+
+        if (isNullOrEmptyString(codeT)) {
+            codeT = "topxeq";
+        }
+
+        byte[] codeBufT = getUTF8Bytes(codeT);
+        // Pl(getBufStringDec(codeBufT, ","));
+
+        int codeLenT = codeBufT.length;
+
+        ByteArrayOutputStream sbuf = new ByteArrayOutputStream(lenT);
+
+        for (int i = 0; i < lenT; i++) {
+            sbuf.write((byte) modX((bufT[i] & 0xFF) + (codeBufT[i % codeLenT] & 0xFF) + (i + 1), 256));
+        }
+
+        byte[] rBuf = sbuf.toByteArray();
+
+        // Pl("buf(%d): %s", rBuf.length, getBufStringDec(rBuf, ","));
+
+        return byteArrayToHex(rBuf);
+
+    }
+
+    public static String DecryptStringByTXTE(String strA, String codeA) {
+
+        byte[] bufT = hexToByteArray(strA);
+
+        int lenT = bufT.length;
+
+        String codeT = codeA;
+
+        if (isNullOrEmptyString(codeT)) {
+            codeT = "topxeq";
+        }
+
+        byte[] codeBufT = getUTF8Bytes(codeT);
+        // Pl(getBufStringDec(codeBufT, ","));
+
+        int codeLenT = codeBufT.length;
+
+        ByteArrayOutputStream sbuf = new ByteArrayOutputStream(lenT);
+
+        for (int i = 0; i < lenT; i++) {
+            sbuf.write((byte) modX((bufT[i] & 0xFF) - (codeBufT[i % codeLenT] & 0xFF) - (i + 1), 256));
+        }
+
+        return ByteArrayOutputStreamToUTF8String(sbuf);
 
     }
 
