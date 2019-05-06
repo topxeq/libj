@@ -241,11 +241,42 @@ public class TXGT {
 
     }
 
+    public static byte[] hexToByteArrayWithException(String strA) {
+        if (strA == null) {
+            return null;
+        }
+
+        String strT = strA.trim();
+
+        int dataLen = strT.length() / 2;
+
+        byte[] buffer = new byte[dataLen];
+
+        for (int i = 0; i < dataLen; i++) {
+            try {
+                buffer[i] = TXGT.hex2Byte(strT.substring(i * 2, i * 2 + 2));
+            } catch (Exception e) {
+                throw e;
+            }
+        }
+
+        return buffer;
+
+    }
+
     public static byte hex2Byte(String hexStrA) {
         try {
             return (byte) (Integer.decode("0x" + hexStrA).intValue());
         } catch (Exception e) {
             return (byte) 0;
+        }
+    }
+
+    public static byte hex2ByteWithException(String hexStrA) {
+        try {
+            return (byte) (Integer.decode("0x" + hexStrA).intValue());
+        } catch (Exception e) {
+            throw e;
         }
     }
 
@@ -734,6 +765,125 @@ public class TXGT {
 
     }
 
+    public static byte[] EncryptDataByTXDEE(byte[] srcDataA, String codeA) {
+        if (srcDataA == null) {
+            return null;
+        }
+
+        int dataLen = srcDataA.length;
+
+        if (dataLen < 1) {
+            return srcDataA;
+        }
+
+        String codeT = codeA;
+        if (isNullOrEmptyString(codeT)) {
+            codeT = "topxeq";
+        }
+
+        byte[] codeBytes = getUTF8Bytes(codeT);
+
+        int codeLen = codeBytes.length;
+
+        ByteArrayOutputStream bufB = new ByteArrayOutputStream(dataLen);
+
+        bufB.write(getRandomByte());
+        byte b1 = getRandomByte();
+        bufB.write(b1);
+
+        for (int i = 0; i < dataLen; i++) {
+            bufB.write((byte) modX(srcDataA[i] + codeBytes[i % codeLen] + (i + 1) + b1, 256));
+        }
+
+        bufB.write(getRandomByte());
+        bufB.write(getRandomByte());
+
+        return bufB.toByteArray();
+    }
+
+    public static String EncryptStringByTXDEE(String strA, String codeA) {
+        if (strA == null) {
+            return null;
+        }
+
+        if (strA.isEmpty()) {
+            return "";
+        }
+
+        byte[] dataDT = EncryptDataByTXDEE(getUTF8Bytes(strA), codeA);
+
+        if (dataDT == null) {
+            return GenerateErrorStringF("encrypting failed");
+        }
+
+        return byteArrayToHex(dataDT);
+    }
+
+    public static byte[] DecryptDataByTXDEE(byte[] srcDataA, String codeA) {
+        if (srcDataA == null) {
+            return null;
+        }
+
+        int dataLen = srcDataA.length;
+
+        if (dataLen < 4) {
+            return null;
+        }
+
+        dataLen -= 4;
+
+        String codeT = codeA;
+        if (isNullOrEmptyString(codeT)) {
+            codeT = "topxeq";
+        }
+
+        byte[] codeBytes = getUTF8Bytes(codeT);
+
+        int codeLen = codeBytes.length;
+
+        ByteArrayOutputStream bufB = new ByteArrayOutputStream(dataLen);
+
+        for (int i = 0; i < dataLen; i++) {
+            bufB.write((byte) modX(srcDataA[2 + i] - codeBytes[i % codeLen] - (i + 1) - srcDataA[1], 256));
+        }
+
+        return bufB.toByteArray();
+    }
+
+    public static String DecryptStringByTXDEE(String strA, String codeA) {
+        if (isNullOrEmptyString(strA)) {
+            return strA;
+        }
+
+        byte[] sBufT;
+
+        try {
+            if (strA.startsWith("740404")) {
+                sBufT = hexToByteArrayWithException(strA.substring(6));
+            } else {
+                sBufT = hexToByteArrayWithException(strA);
+            }
+        } catch (Exception e) {
+            return GenerateErrorStringF("decrypting failed");
+        }
+
+        byte[] dataDT = DecryptDataByTXDEE(sBufT, codeA);
+
+        if (dataDT == null) {
+            return GenerateErrorStringF("decrypting failed");
+        }
+
+        String rs;
+
+        try {
+            rs = new String(dataDT, "utf-8");
+        } catch (Exception e) {
+            return GenerateErrorStringF("decrypting failed");
+        }
+
+        return rs;
+    }
+
     public static String getCurrentDateTime(String formatA) {
         if (formatA == null) {
             return (new SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.getDefault()))
@@ -894,6 +1044,12 @@ public class TXGT {
     public static int getRandomInt() {
         synchronized (mRandomGen) {
             return mRandomGen.nextInt();
+        }
+    }
+
+    public static byte getRandomByte() {
+        synchronized (mRandomGen) {
+            return (byte) (mRandomGen.nextInt());
         }
     }
 

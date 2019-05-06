@@ -21,8 +21,6 @@ public class Test {
 
         TXGT.Pl("Code: %d, %c", a, c);
 
-
-
         TXGT.Pl("%d", TXGT.byteAddU(120, 160));
         TXGT.Pl("%d", TXGT.byteMinusU(120, 124));
 
@@ -59,6 +57,10 @@ public class Test {
         TXGT.Pl("%02X", c1);
         TXGT.Pl("%02X", c2);
         TXGT.Pl("%02X", c3);
+
+        st = TXGT.EncryptStringByTXDEE("abcABZ%&*&我们大家都很好。", null);
+        TXGT.Pl("TXDEE: (%d)%s", st.length(), st);
+        TXGT.Pl("DeTXDEE: %s", TXGT.DecryptStringByTXDEE(st, null));
 
     }
 
