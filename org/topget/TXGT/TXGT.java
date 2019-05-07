@@ -801,6 +801,68 @@ public class TXGT {
         return bufB.toByteArray();
     }
 
+    public static byte SumBytes(byte[] srcDataA) {
+        if (srcDataA == null) {
+            return 0;
+        }
+
+        int lenT = srcDataA.length;
+
+        int sumT = 0;
+
+        for (int i = 0; i < lenT; i++) {
+            sumT += srcDataA[i] & 0xFF;
+        }
+
+        return (byte) (modX(sumT, 256));
+    }
+
+    public static byte[] EncryptDataByTXDEF(byte[] srcDataA, String codeA) {
+        if (srcDataA == null) {
+            return null;
+        }
+
+        int dataLen = srcDataA.length;
+
+        if (dataLen < 1) {
+            return srcDataA;
+        }
+
+        String codeT = codeA;
+        if (isNullOrEmptyString(codeT)) {
+            codeT = "topxeq";
+        }
+
+        byte[] codeBytes = getUTF8Bytes(codeT);
+
+        int codeLen = codeBytes.length;
+
+        int sumT = SumBytes(codeBytes) & 0xFF;
+
+        int addLenT = (sumT % 5) + 2;
+        int encIndexT = sumT % addLenT;
+
+        byte randomByteT = 0;
+
+        ByteArrayOutputStream bufB = new ByteArrayOutputStream(dataLen);
+
+        for (int i = 0; i < addLenT; i++) {
+            if (i == encIndexT) {
+                randomByteT = getRandomByte();
+                bufB.write(randomByteT);
+                continue;
+            }
+
+            bufB.write(getRandomByte());
+        }
+
+        for (int i = 0; i < dataLen; i++) {
+            bufB.write((byte) modX(srcDataA[i] + codeBytes[i % codeLen] + (i + 1) + (randomByteT & 0xFF), 256));
+        }
+
+        return bufB.toByteArray();
+    }
+
     public static String EncryptStringByTXDEE(String strA, String codeA) {
         if (strA == null) {
             return null;
@@ -811,6 +873,24 @@ public class TXGT {
         }
 
         byte[] dataDT = EncryptDataByTXDEE(getUTF8Bytes(strA), codeA);
+
+        if (dataDT == null) {
+            return GenerateErrorStringF("encrypting failed");
+        }
+
+        return byteArrayToHex(dataDT);
+    }
+
+    public static String EncryptStringByTXDEF(String strA, String codeA) {
+        if (strA == null) {
+            return null;
+        }
+
+        if (strA.isEmpty()) {
+            return "";
+        }
+
+        byte[] dataDT = EncryptDataByTXDEF(getUTF8Bytes(strA), codeA);
 
         if (dataDT == null) {
             return GenerateErrorStringF("encrypting failed");
@@ -850,6 +930,43 @@ public class TXGT {
         return bufB.toByteArray();
     }
 
+    public static byte[] DecryptDataByTXDEF(byte[] srcDataA, String codeA) {
+        if (srcDataA == null) {
+            return null;
+        }
+
+        String codeT = codeA;
+        if (isNullOrEmptyString(codeT)) {
+            codeT = "topxeq";
+        }
+
+        byte[] codeBytes = getUTF8Bytes(codeT);
+
+        int codeLen = codeBytes.length;
+
+        int sumT = SumBytes(codeBytes) & 0xFF;
+
+        int addLenT = (sumT % 5) + 2;
+        int encIndexT = sumT % addLenT;
+
+        int dataLen = srcDataA.length;
+
+        if (dataLen < addLenT) {
+            return null;
+        }
+
+        dataLen -= addLenT;
+
+        ByteArrayOutputStream bufB = new ByteArrayOutputStream(dataLen);
+
+        for (int i = 0; i < dataLen; i++) {
+            bufB.write(
+                    (byte) modX(srcDataA[addLenT + i] - codeBytes[i % codeLen] - (i + 1) - srcDataA[encIndexT], 256));
+        }
+
+        return bufB.toByteArray();
+    }
+
     public static String DecryptStringByTXDEE(String strA, String codeA) {
         if (isNullOrEmptyString(strA)) {
             return strA;
@@ -868,6 +985,40 @@ public class TXGT {
         }
 
         byte[] dataDT = DecryptDataByTXDEE(sBufT, codeA);
+
+        if (dataDT == null) {
+            return GenerateErrorStringF("decrypting failed");
+        }
+
+        String rs;
+
+        try {
+            rs = new String(dataDT, "utf-8");
+        } catch (Exception e) {
+            return GenerateErrorStringF("decrypting failed");
+        }
+
+        return rs;
+    }
+
+    public static String DecryptStringByTXDEF(String strA, String codeA) {
+        if (isNullOrEmptyString(strA)) {
+            return strA;
+        }
+
+        byte[] sBufT;
+
+        try {
+            if (strA.startsWith("740404")) {
+                sBufT = hexToByteArrayWithException(strA.substring(6));
+            } else {
+                sBufT = hexToByteArrayWithException(strA);
+            }
+        } catch (Exception e) {
+            return GenerateErrorStringF("decrypting failed");
+        }
+
+        byte[] dataDT = DecryptDataByTXDEF(sBufT, codeA);
 
         if (dataDT == null) {
             return GenerateErrorStringF("decrypting failed");

@@ -62,6 +62,11 @@ public class Test {
         TXGT.Pl("TXDEE: (%d)%s", st.length(), st);
         TXGT.Pl("DeTXDEE: %s", TXGT.DecryptStringByTXDEE(st, null));
 
+        st = TXGT.EncryptStringByTXDEF("abcABZ%&*&我们大家都很好。", null);
+        TXGT.Pl("TXDEF: (%d)%s", st.length(), st);
+        TXGT.Pl("DeTXDEF: %s", TXGT.DecryptStringByTXDEF(st, null));
+        TXGT.Pl("DeTXDEF: %s", TXGT.DecryptStringByTXDEF("F6375D3330331A092EFDFA0005B3626FBE9791B8848BC590A1C269A7CBA679C491ADCF6E79", null));
+
     }
 
 }
